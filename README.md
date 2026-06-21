@@ -14,8 +14,11 @@
 - 📋 **操作日志**：完整记录所有管理操作，支持归档管理
 
 > 💡 本项目由 [豆包 AI](https://www.doubao.com/) 辅助开发，由 Half-Skilled TvT 负责产品设计、需求定义和质量把控。
-
 ---
+## 截图
+![index](https://github.com/9jianxian/TermHub/blob/main/screenshots/index.png)
+![AI](https://github.com/9jianxian/TermHub/blob/main/screenshots/ai.png)
+---index
 
 ## 快速启动
 
