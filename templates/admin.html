@@ -1,0 +1,1648 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理后台 - 术语通 TermHub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* 左侧边栏 */
+        .sidebar {
+            width: 240px;
+            background: #1F4E79;
+            color: white;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar-header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-header p {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .sidebar-menu {
+            flex: 1;
+            padding: 10px 0;
+        }
+
+        .menu-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+
+        .menu-item:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .menu-item.active {
+            background: rgba(255,255,255,0.15);
+            border-left: 3px solid #2E75B6;
+        }
+
+        .menu-item .icon {
+            font-size: 16px;
+        }
+
+        .sidebar-footer {
+            padding: 15px 20px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            font-size: 12px;
+            opacity: 0.7;
+        }
+
+        .sidebar-footer a {
+            color: white;
+            text-decoration: none;
+        }
+
+        .sidebar-footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* 主内容区 */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .main-header {
+            padding: 20px 30px;
+            background: #fff;
+            border-bottom: 1px solid #e8e8e8;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            color: #1F4E79;
+            padding: 5px 10px;
+            margin-right: 10px;
+        }
+        
+        .main-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1F4E79;
+            flex: 1;
+        }
+
+        .main-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: #1F4E79;
+        }
+
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 30px;
+        }
+
+        /* 工具栏 */
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .toolbar-left {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+        }
+
+        .search-box input, .search-box select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .search-box input:focus, .search-box select:focus {
+            border-color: #2E75B6;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-primary {
+            background: #1F4E79;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2E75B6;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-sm {
+            padding: 4px 10px;
+            font-size: 12px;
+        }
+
+        /* 表格 */
+        .data-table {
+            width: 100%;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            overflow: hidden;
+        }
+
+        .data-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th {
+            background: #f8f9fa;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+            color: #666;
+            border-bottom: 1px solid #eee;
+        }
+
+        .data-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+        }
+
+        .data-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .data-table tr:hover {
+            background: #f9f9f9;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .category-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #e6f0ff;
+            color: #1F4E79;
+            border-radius: 10px;
+            font-size: 12px;
+        }
+
+        .phonetic {
+            color: #666;
+            font-size: 13px;
+        }
+
+        /* 分页 */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .pagination button {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            border-color: #2E75B6;
+            color: #2E75B6;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination .page-info {
+            font-size: 13px;
+            color: #666;
+        }
+
+        /* 弹窗 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 10px;
+            width: 500px;
+            max-width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1F4E79;
+        }
+
+        .modal-close {
+            cursor: pointer;
+            font-size: 20px;
+            color: #999;
+            background: none;
+            border: none;
+        }
+
+        .modal-close:hover {
+            color: #333;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-group label .required {
+            color: #dc3545;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            border-color: #2E75B6;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        .modal-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        /* 确认弹窗 */
+        .confirm-modal .modal {
+            width: 400px;
+        }
+
+        .confirm-message {
+            font-size: 15px;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .confirm-warning {
+            margin-top: 10px;
+            padding: 10px;
+            background: #fff3cd;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #856404;
+        }
+
+        /* 提示消息 */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 6px;
+            color: white;
+            font-size: 14px;
+            z-index: 2000;
+            transform: translateX(120%);
+            transition: transform 0.3s;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast.success {
+            background: #28a745;
+        }
+
+        .toast.error {
+            background: #dc3545;
+        }
+
+        /* 加载状态 */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        /* 页面切换 */
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a1;
+        }
+    
+        /* 批量导入页面 */
+        .import-container {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .import-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+        
+        .import-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .import-section {
+            margin-bottom: 25px;
+        }
+        
+        .import-section h4 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #2E75B6;
+        }
+        
+        .btn-lg {
+            font-size: 16px;
+            padding: 12px 24px;
+        }
+        
+        code {
+            background: #e8f4fd;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #2E75B6;
+        }
+
+        /* 设置面板切换 */
+        .settings-panel {
+            display: none;
+        }
+
+        .settings-panel.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+
+        /* AI聊天界面 */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            max-height: calc(100vh - 140px);
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        
+        .chat-message {
+            display: flex;
+            margin-bottom: 20px;
+            align-items: flex-start;
+        }
+        
+        .chat-message.user-message {
+            flex-direction: row-reverse;
+        }
+        
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1F4E79, #2E75B6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+            margin: 0 12px;
+        }
+        
+        .user-message .message-avatar {
+            background: linear-gradient(135deg, #5cb85c, #4cae4c);
+        }
+        
+        .message-content {
+            max-width: 70%;
+            background: #f5f7fa;
+            padding: 12px 16px;
+            border-radius: 12px;
+            line-height: 1.6;
+        }
+        
+        .user-message .message-content {
+            background: #e6f0ff;
+        }
+        
+        .message-content p {
+            margin: 0 0 8px 0;
+        }
+        
+        .message-content p:last-child {
+            margin-bottom: 0;
+        }
+        
+        .message-content ul {
+            margin: 8px 0;
+            padding-left: 20px;
+        }
+        
+        .message-content li {
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+        
+        .chat-input-area {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .chat-input-area textarea {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            resize: none;
+            font-family: inherit;
+        }
+        
+        .chat-input-area textarea:focus {
+            outline: none;
+            border-color: #2E75B6;
+        }
+        
+        .send-btn {
+            padding: 0 24px;
+            background: linear-gradient(135deg, #1F4E79, #2E75B6);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .send-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(31, 78, 121, 0.3);
+        }
+        
+        .send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .chat-actions {
+            text-align: right;
+        }
+        
+        .chat-actions .btn-secondary {
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .chat-actions .btn-secondary:hover {
+            color: #333;
+        }
+        
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 12px 16px;
+        }
+        
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: #ccc;
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+        
+        .typing-indicator span:nth-child(1) {
+            animation-delay: 0s;
+        }
+        
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-8px);
+            }
+        }
+
+        /* 批量导入导出面板切换 */
+        .import-panel {
+            display: none;
+        }
+
+        .import-panel.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 顶部子导航 - 优化样式 */
+        .settings-subnav {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            font-size: 15px;
+            background: rgba(255, 255, 255, 0.5);
+            padding: 4px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(31, 78, 121, 0.1);
+        }
+
+        .subnav-separator {
+            color: #1F4E79;
+            font-size: 18px;
+            font-weight: 300;
+            margin-right: 8px;
+        }
+
+        .subnav-item {
+            color: #666;
+            text-decoration: none;
+            padding: 6px 14px;
+            border-radius: 16px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .subnav-item:hover {
+            color: #2E75B6;
+            background: rgba(46, 117, 182, 0.1);
+        }
+
+        .subnav-item.active {
+            color: white;
+            background: linear-gradient(135deg, #1F4E79, #2E75B6);
+            font-weight: 600;
+            box-shadow: 0 2px 6px rgba(31, 78, 121, 0.25);
+        }
+
+        .subnav-divider {
+            color: #ddd;
+            font-size: 14px;
+            margin: 0 4px;
+        }
+
+
+    /* 手机端适配 */
+    @media (max-width: 768px) {
+        .menu-toggle {
+            display: block;
+        }
+        
+        .sidebar {
+            position: fixed;
+            left: -280px;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            z-index: 1000;
+            transition: left 0.3s ease;
+            overflow-y: auto;
+        }
+        
+        .sidebar.show {
+            left: 0;
+        }
+        
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+        
+        .sidebar-overlay.show {
+            display: block;
+        }
+        
+        .sidebar-footer {
+            display: block;
+        }
+        
+        .main-content {
+            margin-left: 0;
+            padding: 0;
+        }
+        
+        .main-header {
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 15px;
+            margin-bottom: 0;
+        }
+        
+        .main-title {
+            font-size: 18px;
+        }
+        
+        .main-stats {
+            gap: 8px;
+            order: 3;
+            width: 100%;
+            justify-content: flex-end;
+        }
+        
+        .stat-item {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        
+        .stat-value {
+            font-size: 16px;
+        }
+        
+        .stat-label {
+            font-size: 11px;
+        }
+        
+        .content-area {
+            padding: 15px;
+        }
+        
+        /* 表格适配 */
+        .data-table {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        table {
+            min-width: 600px;
+        }
+        
+        th, td {
+            padding: 10px 8px;
+            font-size: 13px;
+        }
+        
+        /* 按钮适配 */
+        .btn {
+            min-height: 40px;
+            font-size: 13px;
+            padding: 8px 16px;
+        }
+        
+        .btn-group {
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        /* 弹窗适配 */
+        .modal {
+            max-width: 95% !important;
+            margin: 20px auto;
+        }
+        
+        .modal-body {
+            padding: 15px;
+        }
+        
+        input, select, textarea {
+            font-size: 16px; /* 防止iOS自动缩放 */
+        }
+        
+        .form-row {
+            flex-direction: column;
+            gap: 0;
+        }
+        
+        /* 分页适配 */
+        .pagination {
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        
+        .page-btn {
+            min-width: 36px;
+            height: 36px;
+            font-size: 13px;
+        }
+        
+        /* 子导航适配 */
+        .settings-subnav, .import-subnav {
+            font-size: 12px;
+        }
+    }
+    
+    /* 更小屏幕适配 */
+    @media (max-width: 480px) {
+        .main-stats {
+            flex-direction: column;
+        }
+        
+        .stat-item {
+            width: 100%;
+        }
+        
+        .content-area {
+            padding: 10px;
+        }
+        
+        th, td {
+            padding: 8px 6px;
+            font-size: 12px;
+        }
+    }
+</style>
+</head>
+<body>
+    <!-- 侧边栏遮罩层 -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    
+    <div class="container">
+        <!-- 左侧边栏 -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>🔐 管理后台</h1>
+                <p>术语通 TermHub - 专业英语词汇学习系统</p>
+            </div>
+            <div class="sidebar-menu">
+                <div class="menu-item active" onclick="switchPage('categories')">
+                    <span class="icon">📁</span>
+                    <span>分类管理</span>
+                </div>
+                <div class="menu-item" onclick="switchPage('words')">
+                    <span class="icon">📝</span>
+                    <span>单词管理</span>
+                </div>
+                <div class="menu-item" onclick="switchPage('import')">
+                    <span class="icon">📥</span>
+                    <span>批量导入</span>
+                </div>
+                <div class="menu-item" onclick="switchPage('logs')">
+                    <span class="icon">📋</span>
+                    <span>日志管理</span>
+                </div>
+                <div class="menu-item" onclick="switchPage('ai')" id="menu-ai">
+                    <span class="icon">🤖</span>
+                    <span>AI助手</span>
+                </div>
+                <div class="menu-item" onclick="switchPage('settings')">
+                    <span class="icon">⚙️</span>
+                    <span>设置</span>
+                </div>
+            </div>
+            <div class="sidebar-footer">
+                <a href="/" style="display: block; margin-bottom: 8px;">← 返回词汇首页</a>
+                <a href="/logout" style="color: #ff6b6b;">🚪 退出登录</a>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="main-content">
+            <div class="main-header">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+                    <div class="main-title" id="pageTitle">分类管理</div>
+                    <!-- 设置页面子导航 -->
+                    <div class="settings-subnav" id="settingsSubnav" style="display: none;">
+                        <span class="subnav-separator">›</span>
+                        <a href="javascript:void(0)" class="subnav-item active" onclick="switchSettingTab('site')" id="subnav-site">站点信息</a>
+                        <span class="subnav-divider">|</span>
+                        <a href="javascript:void(0)" class="subnav-item" onclick="switchSettingTab('password')" id="subnav-password">修改密码</a>
+                        <span class="subnav-divider">|</span>
+                        <a href="javascript:void(0)" class="subnav-item" onclick="switchSettingTab('ai')" id="subnav-ai">AI设置</a>
+                    </div>
+                    
+                    <!-- 批量导入导出页面子导航 -->
+                    <div class="import-subnav" id="importSubnav" style="display: none;">
+                        <span class="subnav-separator">›</span>
+                        <a href="javascript:void(0)" class="subnav-item active" onclick="switchImportTab('export')" id="subnav-export">批量导出</a>
+                        <span class="subnav-divider">|</span>
+                        <a href="javascript:void(0)" class="subnav-item" onclick="switchImportTab('import')" id="subnav-import">批量导入</a>
+                    </div>
+                </div>
+                <div class="main-stats">
+                    <div class="stat-item">
+                        <span>总分类：</span>
+                        <span class="stat-value" id="categoryCount">{{ category_count }}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>总单词：</span>
+                        <span class="stat-value" id="totalCount">{{ total_count }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-area">
+                <!-- 分类管理页面 -->
+                <div class="page active" id="page-categories">
+                    <div class="toolbar">
+                        <div class="toolbar-left">
+                            <input type="text" id="categorySearch" placeholder="搜索分类..." autocomplete="off" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; outline: none;">
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-primary" onclick="showAddCategoryModal()">
+                                <span>+</span> 添加分类
+                            </button>
+                            <button class="btn" onclick="showMergeCategoryModal()" id="mergeCategoryBtn" style="display: none; background: #f0ad4e; color: white; border-color: #f0ad4e;">
+                                <span>🔀</span> 合并分类
+                            </button>
+                        </div>
+                    </div>
+                    <div class="data-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="width: 50px;"><input type="checkbox" id="selectAllCategories" onchange="toggleSelectAllCategories(this)"></th>
+                                    <th style="width: 55%;">分类名称</th>
+                                    <th style="width: 18%;">单词数量</th>
+                                    <th style="width: 22%;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="categoryTableBody">
+                                <tr><td colspan="3" class="loading">加载中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 单词管理页面 -->
+                <div class="page" id="page-words">
+                    <div class="toolbar">
+                        <div class="toolbar-left">
+                            <div class="search-box">
+                                <input type="text" id="wordSearch" placeholder="搜索单词或释义...">
+                                <select id="wordCategoryFilter">
+                                    <option value="">全部分类</option>
+                                </select>
+                                <button class="btn btn-secondary" onclick="searchWords()">搜索</button>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-primary" onclick="showAddWordModal()">
+                                <span>+</span> 添加单词
+                            </button>
+                            <button class="btn" onclick="showBatchUpdateModal()" id="batchUpdateBtn" style="display: none; background: #f0ad4e; color: white; border-color: #f0ad4e;">
+                                <span>✏️</span> 批量改分类
+                            </button>
+                            <button class="btn" onclick="showBatchDeleteModal()" id="batchDeleteBtn" style="display: none; background: #d9534f; color: white; border-color: #d9534f;">
+                                <span>🗑️</span> 批量删除
+                            </button>
+                        </div>
+
+                    </div>
+
+                
+
+                
+                    <div class="data-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;"><input type="checkbox" id="selectAllWords" onchange="toggleSelectAllWords(this)"></th>
+                                    <th style="width: 14%;">英文单词</th>
+                                    <th style="width: 11%;">分类</th>
+                                    <th style="width: 14%;">英式音标</th>
+                                    <th style="width: 14%;">美式音标</th>
+                                    <th style="width: 26%;">中文释义</th>
+                                    <th style="width: 14%;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="wordTableBody">
+                                <tr><td colspan="6" class="loading">加载中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="pagination" id="wordPagination">
+                    </div>
+                </div>
+
+                <!-- 批量导入页面 -->
+                <div class="page" id="page-import">
+                    <div class="import-container">
+                        <!-- 批量导出面板 -->
+                        <div class="import-panel active" id="panel-export">
+                            <div class="import-card">
+                            <div class="import-header">
+                                <h3 style="margin-bottom: 10px; color: #1F4E79;">📤 批量导出单词</h3>
+                                <p style="color: #666; font-size: 14px;">按分类导出单词数据为CSV文件</p>
+                            </div>
+                            
+                            <div class="import-section">
+                                <h4 style="margin-bottom: 15px; color: #2E75B6;">选择导出范围</h4>
+                                <div class="form-group">
+                                    <label class="form-label">选择分类</label>
+                                    <select id="exportCategory" class="form-input">
+                                        <option value="">全部分类</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="import-section">
+                                <button class="btn btn-primary btn-lg" onclick="exportWords()" style="width: 100%; padding: 14px; font-size: 16px;">
+                                    📥 导出CSV文件
+                                </button>
+                            </div>
+                            
+                            <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; font-size: 13px; color: #666; line-height: 2;">
+                                <p>✅ 导出格式与导入模板完全一致</p>
+                                <p>✅ 包含5列：<code>category_name</code>、<code>english_word</code>、<code>british_phonetic</code>、<code>american_phonetic</code>、<code>chinese_definition</code></p>
+                                <p>✅ CSV文件为UTF-8编码，可直接用Excel打开</p>
+                            </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 批量导入面板 -->
+                        <div class="import-panel" id="panel-import">
+                            <div class="import-card">
+                            <div class="import-header">
+                                <h3 style="margin-bottom: 10px; color: #1F4E79;">📥 批量导入单词</h3>
+                                <p style="color: #666; font-size: 14px;">通过CSV文件批量导入单词数据</p>
+                            </div>
+                            
+                            <div class="import-section">
+                                <h4 style="margin-bottom: 15px; color: #2E75B6;">第一步：下载模板</h4>
+                                <p style="margin-bottom: 12px; color: #666; font-size: 13px;">请先下载CSV模板，按照模板格式填写单词数据后再上传：</p>
+                                <button class="btn btn-secondary" onclick="downloadTemplate()">
+                                    📄 下载CSV模板
+                                </button>
+                            </div>
+                            
+                            <div class="import-section">
+                                <h4 style="margin-bottom: 15px; color: #2E75B6;">第二步：上传文件</h4>
+                                <div class="form-group">
+                                    <label class="form-label">选择CSV文件</label>
+                                    <input type="file" id="importFile" accept=".csv" class="form-input" style="padding: 10px;">
+                                </div>
+                            </div>
+                            
+                            <div class="import-section">
+                                <h4 style="margin-bottom: 15px; color: #2E75B6;">导入说明</h4>
+                                <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; font-size: 13px; color: #666; line-height: 2;">
+                                    <p>✅ CSV文件编码请使用 <strong>UTF-8</strong></p>
+                                    <p>✅ 分类不存在时会 <strong>自动创建</strong> 新分类</p>
+                                    <p>✅ 单词已存在时会 <strong>自动更新</strong> 原有数据</p>
+                                    <p>✅ 空行和无效行会 <strong>自动跳过</strong></p>
+                                    <p>✅ 模板包含5列：<code>category_name</code>、<code>english_word</code>、<code>british_phonetic</code>、<code>american_phonetic</code>、<code>chinese_definition</code></p>
+                                </div>
+                            </div>
+                            
+                            <div class="import-section">
+                                <button class="btn btn-primary btn-lg" onclick="importWords()" id="importBtn" style="width: 100%; padding: 14px; font-size: 16px;">
+                                    🚀 开始导入
+                                </button>
+                            </div>
+                            
+                            <div id="importResult" style="display: none;">
+                            </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- 批量导入页面结束 -->
+                <!-- AI助手页面 -->
+                <div class="page" id="page-ai">
+                    <div class="chat-container">
+                        <div class="chat-messages" id="chatMessages">
+                            <div class="chat-message ai-message">
+                                <div class="message-avatar">🤖</div>
+                                <div class="message-content">
+                                    <p>你好！我是术语通 TermHub 的AI助手，可以帮你管理词汇和分类。</p>
+                                    <p>你可以用自然语言告诉我要做什么，比如：</p>
+                                    <ul>
+                                        <li>添加单词："添加一个单词authentication，意思是身份验证，分类到网络安全基础"</li>
+                                        <li>修改单词："把单词password的中文释义改成密码"</li>
+                                        <li>删除单词："删除单词test"</li>
+                                        <li>添加分类："添加一个新分类叫人工智能安全"</li>
+                                        <li>修改分类："把密码学专项改名为密码学基础"</li>
+                                    </ul>
+                                    <p>请先在<span style="color: #2E75B6; cursor: pointer;" onclick="switchPage('settings')">设置页面</span>配置你的API Key和地址哦~</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chat-input-area">
+                            <textarea id="chatInput" placeholder="输入消息，按Enter发送，Shift+Enter换行..." rows="2"></textarea>
+                            <button onclick="sendAIMessage()" class="send-btn">发送</button>
+                        </div>
+                        <div class="chat-actions">
+                            <button onclick="clearAIChat()" class="btn-secondary" style="font-size: 13px; padding: 6px 12px;">
+                                🗑️ 清空聊天记录
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- AI助手页面结束 -->
+
+                
+                <!-- 日志管理页面 -->
+                <div class="page" id="page-logs">
+                    <div class="toolbar">
+                        <div class="toolbar-left">
+                            <div class="search-box">
+                                <select id="logActionFilter" onchange="searchLogs()">
+                                    <option value="">全部操作</option>
+                                </select>
+                            </div>
+                            <div class="tab-switch" style="display: flex; border: 1px solid #ddd; border-radius: 6px; overflow: hidden;">
+                                <div class="log-tab active" data-archived="0" onclick="switchLogTab('0')" style="padding: 6px 12px; cursor: pointer; background: #2E75B6; color: white; font-size: 13px;">
+                                    正常日志
+                                </div>
+                                <div class="log-tab" data-archived="1" onclick="switchLogTab('1')" style="padding: 6px 12px; cursor: pointer; background: #f5f7fa; color: #666; font-size: 13px;">
+                                    归档日志
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn" id="archiveBtn" onclick="archiveLogs()" style="display: none; background: #5bc0de; color: white; border-color: #5bc0de;">
+                                <span>📦</span> 归档选中
+                            </button>
+                            <button class="btn" id="unarchiveBtn" onclick="unarchiveLogs()" style="display: none; background: #f0ad4e; color: white; border-color: #f0ad4e;">
+                                <span>📤</span> 取消归档
+                            </button>
+                            <button class="btn btn-danger" id="clearLogsBtn" onclick="clearLogs()">
+                                <span>🗑️</span> 清空日志
+                            </button>
+                        </div>
+                    </div>
+                    <div class="data-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;"><input type="checkbox" id="selectAllLogs" onchange="toggleSelectAllLogs(this)"></th>
+                                    <th style="width: 15%;">时间</th>
+                                    <th style="width: 12%;">操作类型</th>
+                                    <th style="width: 45%;">操作描述</th>
+                                    <th style="width: 13%;">IP地址</th>
+                                    <th style="width: 10%;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logTableBody">
+                                <tr><td colspan="6" class="loading">加载中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="pagination" id="logPagination">
+                    </div>
+                </div>
+                <!-- 日志管理页面结束 -->
+                
+                <!-- 设置页面 -->
+                <div class="page" id="page-settings">
+                    <div class="import-container">
+                        <!-- 修改密码面板 -->
+                        <div class="settings-panel" id="panel-password">
+                            <div class="import-card">
+                                <div class="import-header">
+                                    <h3 style="margin-bottom: 10px; color: #1F4E79;">🔐 修改密码</h3>
+                                    <p style="color: #666; font-size: 14px;">修改管理员登录密码</p>
+                                </div>
+                                
+                                <div class="import-section">
+                                    <div class="form-group">
+                                        <label>旧密码 <span class="required">*</span></label>
+                                        <input type="password" id="oldPassword" placeholder="请输入当前密码">
+                                    </div>
+                                </div>
+                                
+                                <div class="import-section">
+                                    <div class="form-group">
+                                        <label>新密码 <span class="required">*</span></label>
+                                        <input type="password" id="newPassword" placeholder="请输入新密码（至少4位）" autocomplete="new-password">
+                                    </div>
+                                </div>
+                                
+                                <div class="import-section">
+                                    <div class="form-group">
+                                        <label>确认新密码 <span class="required">*</span></label>
+                                        <input type="password" id="confirmPassword" placeholder="请再次输入新密码" autocomplete="new-password">
+                                    </div>
+                                </div>
+                                
+                                <div class="import-section">
+                                    <button class="btn btn-primary btn-lg" onclick="changePassword()" style="width: 100%; padding: 14px; font-size: 16px;">
+                                        💾 保存修改
+                                    </button>
+                                </div>
+                                
+                                <div style="padding: 15px; background: #fff3cd; border-radius: 8px; font-size: 13px; color: #856404; line-height: 2;">
+                                    <p>⚠️ 密码使用MD5加密存储</p>
+                                    <p>⚠️ 修改密码后需要重新登录</p>
+                                    <p>💡 建议使用强密码，包含字母和数字</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 站点信息面板 -->
+                        <div class="settings-panel active" id="panel-site">
+                            <div class="import-card">
+                                <div class="import-header">
+                                    <h3 style="margin-bottom: 10px; color: #1F4E79;">🌐 站点信息</h3>
+                                    <p style="color: #666; font-size: 14px;">修改网站基本信息</p>
+                                </div>
+                                
+                                <div class="import-section">
+                                    <div class="form-group">
+                                        <label>站点名称 <span class="required">*</span></label>
+                                        <input type="text" id="siteName" placeholder="请输入站点名称">
+                                    </div>
+                                </div>
+                                
+                                <div class="import-section">
+                                    <div class="form-group">
+                                        <label>站点描述</label>
+                                        <textarea id="siteDescription" rows="3" placeholder="请输入站点描述"></textarea>
+                                    </div>
+                                </div>
+                                
+                                <div class="import-section">
+                                    <div class="form-group">
+                                        <label>关键词</label>
+                                        <input type="text" id="siteKeywords" placeholder="多个关键词用逗号分隔">
+                                    </div>
+                                </div>
+                                
+                                <div class="import-section">
+                                    <div class="form-group">
+                                        <label>版权信息</label>
+                                        <input type="text" id="siteCopyright" placeholder="请输入版权信息">
+                                    </div>
+                                </div>
+                                
+                                <div class="import-section">
+                                    <div class="form-group">
+                                        <label>备案号</label>
+                                        <input type="text" id="siteIcp" placeholder="请输入备案号（可选）">
+                                    </div>
+                                </div>
+                                
+                                <div class="import-section">
+                                    <button class="btn btn-primary btn-lg" onclick="saveSiteSettings()" style="width: 100%; padding: 14px; font-size: 16px;">
+                                        💾 保存设置
+                                    </button>
+                                </div>
+                                
+                                <div style="padding: 15px; background: #d1ecf1; border-radius: 8px; font-size: 13px; color: #0c5460; line-height: 2;">
+                                    <p>💡 修改后立即生效，首页会显示新的站点信息</p>
+                                    <p>💡 关键词用于SEO优化，多个关键词用英文逗号分隔</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="settings-panel" id="panel-ai">
+                            <div class="import-card">
+                                <div class="import-header">
+                                    <h3 style="margin-bottom: 10px; color: #1F4E79;">🤖 AI助手设置</h3>
+                                    <p style="color: #666; font-size: 14px;">配置AI接口信息，让AI帮你自动管理词汇</p>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>API Key</label>
+                                    <input type="password" id="aiApiKey" placeholder="sk-..." autocomplete="off">
+                                    <p class="form-hint">OpenAI格式的API密钥</p>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>API 地址</label>
+                                    <input type="text" id="aiApiUrl" placeholder="https://api.openai.com/v1/chat/completions" autocomplete="off">
+                                    <p class="form-hint">兼容OpenAI格式的接口地址</p>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>模型名称</label>
+                                    <input type="text" id="aiModelName" placeholder="deepseek-v4-flash" autocomplete="off">
+                                    <p class="form-hint">使用的模型名称，默认deepseek-v4-flash</p>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>系统提示词</label>
+                                    <textarea id="aiSystemPrompt" rows="8" placeholder="系统提示词，定义AI的角色和行为..."></textarea>
+                                    <p class="form-hint">定义AI助手的角色和行为，一般不需要修改</p>
+                                </div>
+                                
+                                <button onclick="saveAISettings()" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #1F4E79, #2E75B6); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 500;">
+                                    💾 保存AI设置
+                                </button>
+                                
+                                <div style="margin-top: 20px; padding: 15px; background: #fff8e1; border-radius: 8px;">
+                                    <p style="margin: 0 0 8px 0; color: #f57c00; font-weight: 500;">💡 使用提示</p>
+                                    <ul style="margin: 0; padding-left: 20px; color: #666; font-size: 13px;">
+                                        <li>支持所有兼容OpenAI格式的API接口</li>
+                                        <li>AI会自动理解你的意图，执行添加、修改、删除等操作</li>
+                                        <li>所有操作都会记录在日志中</li>
+                                        <li>建议先在测试环境验证后再用于生产</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- 设置页面结束 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加/编辑分类弹窗 -->
+    <div class="modal-overlay" id="categoryModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title" id="categoryModalTitle">添加分类</div>
+                <button class="modal-close" onclick="closeCategoryModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>分类名称 <span class="required">*</span></label>
+                    <input type="text" id="categoryNameInput" placeholder="请输入分类名称">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeCategoryModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveCategory()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加/编辑单词弹窗 -->
+    <div class="modal-overlay" id="wordModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title" id="wordModalTitle">添加单词</div>
+                <button class="modal-close" onclick="closeWordModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>分类 <span class="required">*</span></label>
+                    <select id="wordCategoryInput">
+                        <option value="">请选择分类</option>
+                    </select>
+                    <small style="color: #666; font-size: 12px;">也可以直接输入新分类名</small>
+                </div>
+                <div class="form-group">
+                    <label>英文单词 <span class="required">*</span></label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="wordEnglishInput" placeholder="请输入英文单词" style="flex: 1;">
+                        <button type="button" class="btn btn-secondary" onclick="aiCompleteWord()" style="white-space: nowrap;">🤖 AI补全</button>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>英式音标</label>
+                        <input type="text" id="wordBritishInput" placeholder="例如：/ˈæbsɪləʊn/">
+                    </div>
+                    <div class="form-group">
+                        <label>美式音标</label>
+                        <input type="text" id="wordAmericanInput" placeholder="例如：/ˈæbsəluːʃn/">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>中文释义 <span class="required">*</span></label>
+                    <textarea id="wordDefinitionInput" placeholder="请输入中文释义"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeWordModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveWord()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 确认删除弹窗 -->
+    <div class="modal-overlay confirm-modal" id="confirmModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">确认删除</div>
+                <button class="modal-close" onclick="closeConfirmModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="confirm-message" id="confirmMessage">确定要删除吗？</div>
+                <div class="confirm-warning" id="confirmWarning" style="display: none;">
+                    ⚠️ 此操作不可撤销，请谨慎操作！
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeConfirmModal()">取消</button>
+                <button class="btn btn-danger" onclick="confirmDelete()">确认删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 合并分类弹窗 -->
+    <div class="modal-overlay" id="mergeCategoryModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">合并分类</div>
+                <button class="modal-close" onclick="closeMergeCategoryModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>已选择的分类（将被合并）：</label>
+                    <div id="selectedCategoriesList" style="padding: 10px; background: #f5f7fa; border-radius: 6px; margin-top: 5px; max-height: 120px; overflow-y: auto;">
+                        未选择
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>目标分类方式：</label>
+                    <div class="tab-switch" style="display: flex; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; margin-top: 5px;">
+                        <div class="tab-option active" data-type="existing" onclick="switchMergeTargetType('existing')" style="flex: 1; padding: 8px 12px; text-align: center; cursor: pointer; background: #2E75B6; color: white; font-size: 14px;">
+                            选择已有分类
+                        </div>
+                        <div class="tab-option" data-type="new" onclick="switchMergeTargetType('new')" style="flex: 1; padding: 8px 12px; text-align: center; cursor: pointer; background: #f5f7fa; color: #666; font-size: 14px;">
+                            输入新分类名
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group" id="mergeTargetExistingGroup">
+                    <label>选择目标分类：</label>
+                    <select id="mergeTargetCategory" class="form-input">
+                        <option value="">请选择目标分类</option>
+                    </select>
+                </div>
+                <div class="form-group" id="mergeTargetNewGroup" style="display: none;">
+                    <label>输入新分类名：</label>
+                    <input type="text" id="mergeNewCategoryName" class="form-input" placeholder="请输入新分类名称" autocomplete="off">
+                </div>
+                <div class="form-group" style="color: #d9534f; font-size: 13px;">
+                    ⚠️ 合并后，源分类将被删除，其下所有单词会移到目标分类
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeMergeCategoryModal()">取消</button>
+                <button class="btn btn-primary" onclick="confirmMergeCategories()">确认合并</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 批量修改分类弹窗 -->
+    <div class="modal-overlay" id="batchUpdateWordModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">批量修改分类</div>
+                <button class="modal-close" onclick="closeBatchUpdateModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>已选择 <span id="selectedWordsCount" style="color: #2E75B6; font-weight: bold;">0</span> 个单词</label>
+                </div>
+                <div class="form-group">
+                    <label>移动到分类：</label>
+                    <select id="batchCategoryId" class="form-input">
+                        <option value="">请选择目标分类</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeBatchUpdateModal()">取消</button>
+                <button class="btn btn-primary" onclick="confirmBatchUpdate()">确认移动</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 批量删除单词弹窗 -->
+    <div class="modal-overlay" id="batchDeleteWordModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">批量删除单词</div>
+                <button class="modal-close" onclick="closeBatchDeleteModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>确定要删除选中的 <span id="batchDeleteCount" style="color: #d9534f; font-weight: bold;">0</span> 个单词吗？</label>
+                </div>
+                <div class="form-group" style="color: #d9534f; font-size: 13px;">
+                    ⚠️ 此操作不可撤销，请谨慎操作！
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeBatchDeleteModal()">取消</button>
+                <button class="btn btn-danger" onclick="confirmBatchDelete()">确认删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示消息 -->
+    <div class="toast" id="toast"></div>
+
+
+    <!-- 管理后台JS文件 -->
+    <script src="/static/js/admin.js"></script>
+</body>
+</html>
