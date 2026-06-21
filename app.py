@@ -1353,6 +1353,96 @@ def admin_clear_ai_chat_history():
     
     return jsonify({'success': True, 'message': '聊天历史已清空'})
 
+
+# ========== AI 公共函数 ==========
+
+def get_ai_settings():
+    """获取AI配置"""
+    conn = get_db()
+    settings = dict(conn.execute('SELECT * FROM ai_settings WHERE id = 1').fetchone())
+    conn.close()
+    return settings
+
+
+def parse_ai_json(content):
+    """解析AI返回的JSON内容，支持多种格式（对象或数组）"""
+    import re
+    
+    # 1. 直接解析
+    try:
+        return json.loads(content.strip())
+    except:
+        pass
+    
+    # 2. 提取markdown代码块
+    try:
+        match = re.search(r'```(?:json)?\s*\n(.*?)\n```', content, re.DOTALL)
+        if match:
+            return json.loads(match.group(1).strip())
+    except:
+        pass
+    
+    # 3. 括号深度匹配（对象）
+    try:
+        json_start = content.find('{')
+        if json_start >= 0:
+            depth = 0
+            json_end = -1
+            for i in range(json_start, len(content)):
+                if content[i] == '{':
+                    depth += 1
+                elif content[i] == '}':
+                    depth -= 1
+                    if depth == 0:
+                        json_end = i + 1
+                        break
+            if json_end > json_start:
+                return json.loads(content[json_start:json_end])
+    except:
+        pass
+    
+    # 4. 括号深度匹配（数组）
+    try:
+        json_start = content.find('[')
+        if json_start >= 0:
+            depth = 0
+            json_end = -1
+            for i in range(json_start, len(content)):
+                if content[i] == '[':
+                    depth += 1
+                elif content[i] == ']':
+                    depth -= 1
+                    if depth == 0:
+                        json_end = i + 1
+                        break
+            if json_end > json_start:
+                return json.loads(content[json_start:json_end])
+    except:
+        pass
+    
+    return None
+
+
+def call_ai_api(messages, model_name, api_url, api_key, temperature=0.7, stream=False):
+    """调用AI API"""
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {api_key}'
+    }
+    
+    payload = {
+        'model': model_name,
+        'messages': messages,
+        'temperature': temperature,
+        'stream': stream
+    }
+    
+    response = requests.post(api_url, headers=headers, json=payload, timeout=60)
+    response.raise_for_status()
+    return response
+
+
+# ========== 核心执行函数 ==========
 def execute_ai_action(action, data):
     """执行AI操作"""
     try:
@@ -1375,7 +1465,12 @@ def execute_ai_action(action, data):
             category = conn.execute('SELECT * FROM categories WHERE name = ?', (name,)).fetchone()
             conn.close()
             if category:
-                return {'success': True, 'message': f'找到分类：{name}', 'data': dict(category)}
+                # 精简字段
+                data = {
+                    'id': category['id'],
+                    'name': category['name']
+                }
+                return {'success': True, 'message': f'找到分类：{name}', 'data': data}
             else:
                 return {'success': False, 'message': f'分类不存在：{name}'}
         
@@ -1400,19 +1495,43 @@ def execute_ai_action(action, data):
                 sql += ' AND (v.english_word LIKE ? OR v.chinese_definition LIKE ?)'
                 params.extend([f'%{keyword}%', f'%{keyword}%'])
             
-            sql += ' ORDER BY v.id LIMIT ?'
-            params.append(limit)
+            sql += ' ORDER BY v.id'
             
-            words = [dict(row) for row in conn.execute(sql, params).fetchall()]
+            # limit为0或负数表示获取所有
+            if limit and limit > 0:
+                sql += ' LIMIT ?'
+                params.append(limit)
+            
+            rows = conn.execute(sql, params).fetchall()
+            # 精简字段，只保留AI需要的
+            words = []
+            for row in rows:
+                words.append({
+                    'id': row['id'],
+                    'english_word': row['english_word'],
+                    'british_phonetic': row['british_phonetic'],
+                    'american_phonetic': row['american_phonetic'],
+                    'chinese_definition': row['chinese_definition'],
+                    'category_name': row['category_name']
+                })
             conn.close()
-            return {'success': True, 'message': f'查询成功，共 {len(words)} 个单词', 'data': words}
+            return {'success': True, 'message': f'查询成功，共 {len(words)} 个单词', 'count': len(words), 'data': words}
         
         elif action == 'query_word_by_name':
             english_word = data.get('english_word', '')
             word = conn.execute("SELECT v.*, c.name as category_name FROM vocabulary v LEFT JOIN categories c ON v.category_id = c.id WHERE LOWER(v.english_word) = LOWER(?)", (english_word,)).fetchone()
             conn.close()
             if word:
-                return {'success': True, 'message': f'找到单词：{english_word}', 'data': dict(word)}
+                # 精简字段
+                data = {
+                    'id': word['id'],
+                    'english_word': word['english_word'],
+                    'british_phonetic': word['british_phonetic'],
+                    'american_phonetic': word['american_phonetic'],
+                    'chinese_definition': word['chinese_definition'],
+                    'category_name': word['category_name']
+                }
+                return {'success': True, 'message': f'找到单词：{english_word}', 'data': data}
             else:
                 return {'success': False, 'message': f'单词不存在：{english_word}'}
         
@@ -1811,23 +1930,12 @@ def ai_example():
         return jsonify({'success': False, 'message': '请提供单词'})
     
     # 获取AI配置
-    conn = get_db()
-    settings = dict(conn.execute('SELECT * FROM ai_settings WHERE id = 1').fetchone())
-    conn.close()
+    settings = get_ai_settings()
     
     if not settings.get('api_key'):
         return jsonify({'success': False, 'message': '请先在管理后台配置AI API Key'})
     
     try:
-        api_url = settings['api_url']
-        api_key = settings['api_key']
-        model_name = settings['model_name'] or 'gpt-3.5-turbo'
-        
-        headers = {
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {api_key}'
-        }
-        
         # 构建prompt
         prompt = f"""请为单词 "{word}" 生成至少3个应用场景的中英文例句。
 这个单词属于"{category}"分类，请结合这个分类的应用场景来造句。
@@ -1852,31 +1960,17 @@ def ai_example():
             {'role': 'user', 'content': prompt}
         ]
         
-        payload = {
-            'model': model_name,
-            'messages': messages,
-            'temperature': 0.7
-        }
-        
-        response = requests.post(api_url, headers=headers, json=payload, timeout=60)
-        response.raise_for_status()
-        result = response.json()
-        ai_content = result['choices'][0]['message']['content'].strip()
+        response = call_ai_api(
+            messages,
+            settings['model_name'] or 'gpt-3.5-turbo',
+            settings['api_url'],
+            settings['api_key'],
+            temperature=0.7
+        )
+        ai_content = response.json()['choices'][0]['message']['content'].strip()
         
         # 解析JSON
-        examples = []
-        try:
-            # 尝试直接解析
-            examples = json.loads(ai_content)
-        except:
-            # 尝试提取JSON数组
-            import re
-            match = re.search(r'\[.*\]', ai_content, re.DOTALL)
-            if match:
-                try:
-                    examples = json.loads(match.group())
-                except:
-                    pass
+        examples = parse_ai_json(ai_content) or []
         
         if not examples:
             # 如果解析失败，返回原始内容
@@ -1911,23 +2005,12 @@ def ai_complete_word():
         return jsonify({'success': False, 'message': '请提供英文单词'})
     
     # 获取AI配置
-    conn = get_db()
-    settings = dict(conn.execute('SELECT * FROM ai_settings WHERE id = 1').fetchone())
-    conn.close()
+    settings = get_ai_settings()
     
     if not settings.get('api_key'):
         return jsonify({'success': False, 'message': '请先在管理后台配置AI API Key'})
     
     try:
-        api_url = settings['api_url']
-        api_key = settings['api_key']
-        model_name = settings['model_name'] or 'gpt-3.5-turbo'
-        
-        headers = {
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {api_key}'
-        }
-        
         # 构建prompt
         category_prompt = f'，这个单词属于"{category}"分类' if category else ''
         
@@ -1955,31 +2038,17 @@ def ai_complete_word():
             {'role': 'user', 'content': prompt}
         ]
         
-        payload = {
-            'model': model_name,
-            'messages': messages,
-            'temperature': 0.3
-        }
-        
-        response = requests.post(api_url, headers=headers, json=payload, timeout=60)
-        response.raise_for_status()
-        result = response.json()
-        ai_content = result['choices'][0]['message']['content'].strip()
+        response = call_ai_api(
+            messages,
+            settings['model_name'] or 'gpt-3.5-turbo',
+            settings['api_url'],
+            settings['api_key'],
+            temperature=0.3
+        )
+        ai_content = response.json()['choices'][0]['message']['content'].strip()
         
         # 解析JSON
-        word_info = {}
-        try:
-            # 尝试直接解析
-            word_info = json.loads(ai_content)
-        except:
-            # 尝试提取JSON对象
-            import re
-            match = re.search(r'\{.*\}', ai_content, re.DOTALL)
-            if match:
-                try:
-                    word_info = json.loads(match.group())
-                except:
-                    pass
+        word_info = parse_ai_json(ai_content) or {}
         
         if not word_info:
             return jsonify({
@@ -2003,10 +2072,10 @@ def ai_complete_word():
         return jsonify({'success': False, 'message': f'AI补全失败: {str(e)}'})
 
 
-@app.route('/api/admin/ai-chat', methods=['POST'])
+@app.route('/api/admin/ai-chat-stream', methods=['POST'])
 @login_required
-def admin_ai_chat():
-    """AI聊天接口 - 任务列表模式"""
+def admin_ai_chat_stream():
+    """AI聊天接口 - 流式输出（SSE）"""
     data = request.get_json()
     user_message = data.get('message', '').strip()
     
@@ -2017,192 +2086,163 @@ def admin_ai_chat():
     conn = get_db()
     conn.execute('INSERT INTO ai_chat_history (role, content) VALUES (?, ?)', ('user', user_message))
     conn.commit()
+    conn.close()
     
     # 获取AI配置
-    settings = dict(conn.execute('SELECT * FROM ai_settings WHERE id = 1').fetchone())
-    conn.close()
+    settings = get_ai_settings()
     
     if not settings.get('api_key'):
         return jsonify({'success': False, 'message': '请先配置AI API Key'})
     
-    task_list = []
-    task_results = []
-    final_summary = ''
-    
-    try:
-        api_url = settings['api_url']
-        api_key = settings['api_key']
-        model_name = settings['model_name'] or 'gpt-3.5-turbo'
-        
-        headers = {
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {api_key}'
-        }
-        
-        # ========== 阶段1：AI规划任务 ==========
-        messages = [
-            {'role': 'system', 'content': settings['system_prompt']},
-            {'role': 'user', 'content': user_message}
-        ]
-        
-        plan_messages = messages.copy()
-        plan_messages.append({
-            'role': 'user',
-            'content': '请先分析我的需求，列出你需要执行的任务清单。\n\n任务类型说明：\n- query：查询数据，不修改任何内容\n- modify：修改数据（添加、修改、删除单词或分类）\n- analyze：分析数据，给出结论或建议，不修改数据\n\n重要：如果用户要求"重新分类"、"调整分类"、"修改"、"添加"、"删除"等需要改动数据的操作，请务必设为modify类型，不要设为analyze。\n\n返回JSON格式：{"action": "plan_tasks", "data": {"tasks": [{"id": 1, "name": "任务名称", "description": "任务描述", "type": "query/modify/analyze"}]}}。只返回JSON，不要其他文字。'
-        })
-        
-        payload = {
-            'model': model_name,
-            'messages': plan_messages,
-            'temperature': 0.7
-        }
-        
-        response = requests.post(api_url, headers=headers, json=payload, timeout=60)
-        response.raise_for_status()
-        result = response.json()
-        plan_content = result['choices'][0]['message']['content'].strip()
-        
-        # 解析任务列表
-        tasks = []
+    def generate():
+        """SSE生成器"""
         try:
-            plan_data = None
-            # 1. 先尝试直接解析
-            try:
-                plan_data = json.loads(plan_content.strip())
-            except:
-                # 2. 找markdown代码块
-                try:
-                    import re
-                    json_match = re.search(r'```(?:json)?\s*\n(.*?)\n```', plan_content, re.DOTALL)
-                    if json_match:
-                        plan_data = json.loads(json_match.group(1).strip())
-                except:
-                    # 3. 括号深度匹配
-                    json_start = plan_content.find('{')
-                    if json_start >= 0:
-                        depth = 0
-                        json_end = -1
-                        for i in range(json_start, len(plan_content)):
-                            if plan_content[i] == '{':
-                                depth += 1
-                            elif plan_content[i] == '}':
-                                depth -= 1
-                                if depth == 0:
-                                    json_end = i + 1
-                                    break
-                        if json_end > json_start:
-                            json_str = plan_content[json_start:json_end]
-                            plan_data = json.loads(json_str)
+            api_url = settings['api_url']
+            api_key = settings['api_key']
+            model_name = settings['model_name'] or 'gpt-3.5-turbo'
             
-            if plan_data and plan_data.get('action') == 'plan_tasks':
-                tasks = plan_data.get('data', {}).get('tasks', [])
-        except:
-            pass
-        
-        if not tasks:
-            tasks = [
-                {'id': 1, 'name': '分析需求', 'description': '分析用户需求', 'type': 'analyze'},
-                {'id': 2, 'name': '执行操作', 'description': '执行相应的操作', 'type': 'modify'}
-            ]
-        
-        task_list = tasks
-        
-        # ========== 阶段2：逐个执行任务 ==========
-        current_messages = messages.copy()
-        
-        for task in tasks:
-            task_name = task.get('name', '未知任务')
-            task_type = task.get('type', 'query')
-            task_desc = task.get('description', '')
-            
-            task_result = {
-                'id': task.get('id'),
-                'name': task_name,
-                'description': task_desc,
-                'type': task_type,
-                'status': 'running',
-                'result': ''
+            headers = {
+                'Content-Type': 'application/json',
+                'Authorization': f'Bearer {api_key}'
             }
             
+            task_list = []
+            task_results = []
+            final_summary = ''
+            full_reply = ''
+            
+            # ========== 阶段1：AI规划任务 ==========
+            yield f'event: status\ndata: 正在分析需求，规划任务...\n\n'
+            
+            messages = [
+                {'role': 'system', 'content': settings['system_prompt']},
+                {'role': 'user', 'content': user_message}
+            ]
+            
+            plan_messages = messages.copy()
+            plan_messages.append({
+                'role': 'user',
+                'content': '请先分析我的需求，列出你需要执行的任务清单。\n\n任务类型说明：\n- query：查询数据，不修改任何内容\n- modify：修改数据（添加、修改、删除单词或分类）\n- analyze：分析数据，给出结论或建议，不修改数据\n\n重要：如果用户要求"重新分类"、"调整分类"、"修改"、"添加"、"删除"等需要改动数据的操作，请务必设为modify类型，不要设为analyze。\n\n返回JSON格式：{"action": "plan_tasks", "data": {"tasks": [{"id": 1, "name": "任务名称", "description": "任务描述", "type": "query/modify/analyze"}]}}。只返回JSON，不要其他文字。'
+            })
+            
+            payload = {
+                'model': model_name,
+                'messages': plan_messages,
+                'temperature': 0.7,
+                'stream': True
+            }
+            
+            # 流式获取任务规划
+            plan_content = ''
             try:
-                if task_type == 'query':
-                    # 查询类任务
-                    query_msg = f'执行任务：{task_name}。请返回具体的查询操作，JSON格式。'
-                    current_messages.append({'role': 'user', 'content': query_msg})
-                    
-                    payload = {'model': model_name, 'messages': current_messages, 'temperature': 0.7}
-                    response = requests.post(api_url, headers=headers, json=payload, timeout=60)
-                    response.raise_for_status()
-                    ai_content = response.json()['choices'][0]['message']['content'].strip()
-                    
-                    # 解析查询操作
-                    ai_data = None
-                    try:
-                        ai_data = json.loads(ai_content.strip())
-                    except:
-                        try:
-                            import re
-                            json_match = re.search(r'```(?:json)?\s*\n(.*?)\n```', ai_content, re.DOTALL)
-                            if json_match:
-                                ai_data = json.loads(json_match.group(1).strip())
-                        except:
+                response = requests.post(api_url, headers=headers, json=payload, timeout=60, stream=True)
+                response.raise_for_status()
+                
+                yield f'event: plan_start\ndata: \n\n'
+                
+                for line in response.iter_lines():
+                    if line:
+                        line = line.decode('utf-8')
+                        if line.startswith('data: '):
+                            data = line[6:]
+                            if data == '[DONE]':
+                                break
                             try:
-                                json_start = ai_content.find('{')
-                                if json_start >= 0:
-                                    depth = 0
-                                    json_end = -1
-                                    for i in range(json_start, len(ai_content)):
-                                        if ai_content[i] == '{':
-                                            depth += 1
-                                        elif ai_content[i] == '}':
-                                            depth -= 1
-                                            if depth == 0:
-                                                json_end = i + 1
-                                                break
-                                    if json_end > json_start:
-                                        ai_data = json.loads(ai_content[json_start:json_end])
+                                json_data = json.loads(data)
+                                delta = json_data['choices'][0].get('delta', {})
+                                content_delta = delta.get('content', '')
+                                if content_delta:
+                                    plan_content += content_delta
+                                    yield f'event: plan_token\ndata: {json.dumps({"text": content_delta}, ensure_ascii=False)}\n\n'
                             except:
                                 pass
-                    
-                    if ai_data and ai_data.get('action', '').startswith('query_'):
-                        action = ai_data.get('action')
-                        action_data = ai_data.get('data', {})
-                        action_result = execute_ai_action(action, action_data)
+            except:
+                # 流式失败，降级为普通请求
+                payload['stream'] = False
+                response = requests.post(api_url, headers=headers, json=payload, timeout=60)
+                response.raise_for_status()
+                plan_content = response.json()['choices'][0]['message']['content'].strip()
+                yield f'event: plan_token\ndata: {json.dumps({"text": plan_content}, ensure_ascii=False)}\n\n'
+            
+            yield f'event: plan_end\ndata: \n\n'
+            
+            # 解析任务列表
+            tasks = []
+            try:
+                plan_data = None
+                try:
+                    plan_data = json.loads(plan_content.strip())
+                except:
+                    try:
+                        import re
+                        json_match = re.search(r'```(?:json)?\s*\n(.*?)\n```', plan_content, re.DOTALL)
+                        if json_match:
+                            plan_data = json.loads(json_match.group(1).strip())
+                    except:
+                        json_start = plan_content.find('{')
+                        if json_start >= 0:
+                            depth = 0
+                            json_end = -1
+                            for i in range(json_start, len(plan_content)):
+                                if plan_content[i] == '{':
+                                    depth += 1
+                                elif plan_content[i] == '}':
+                                    depth -= 1
+                                    if depth == 0:
+                                        json_end = i + 1
+                                        break
+                            if json_end > json_start:
+                                json_str = plan_content[json_start:json_end]
+                                plan_data = json.loads(json_str)
+                
+                if plan_data and plan_data.get('action') == 'plan_tasks':
+                    tasks = plan_data.get('data', {}).get('tasks', [])
+            except:
+                pass
+            
+            if not tasks:
+                tasks = [
+                    {'id': 1, 'name': '分析需求', 'description': '分析用户需求', 'type': 'analyze'},
+                    {'id': 2, 'name': '执行操作', 'description': '执行相应的操作', 'type': 'modify'}
+                ]
+            
+            task_list = tasks
+            
+            # 发送任务列表
+            yield f'event: task_list\ndata: {json.dumps(tasks, ensure_ascii=False)}\n\n'
+            
+            # ========== 阶段2：逐个执行任务 ==========
+            current_messages = messages.copy()
+            
+            for task in tasks:
+                task_name = task.get('name', '未知任务')
+                task_type = task.get('type', 'query')
+                task_desc = task.get('description', '')
+                
+                task_result = {
+                    'id': task.get('id'),
+                    'name': task_name,
+                    'description': task_desc,
+                    'type': task_type,
+                    'status': 'running',
+                    'result': ''
+                }
+                
+                # 发送任务开始
+                yield f'event: task_start\ndata: {json.dumps(task_result, ensure_ascii=False)}\n\n'
+                
+                try:
+                    if task_type == 'query':
+                        # 查询类任务
+                        query_msg = f'执行任务：{task_name}。请返回具体的查询操作，严格按照JSON格式返回，不要其他文字。\n\n格式示例：{{"action": "query_words", "data": {{"limit": 0}}}}\n\n注意：获取所有单词请将limit设为0。'
+                        current_messages.append({'role': 'user', 'content': query_msg})
                         
-                        if action_result['success']:
-                            task_result['status'] = 'success'
-                            task_result['result'] = action_result.get('message', '查询成功')
-                            # 把完整的查询结果加入上下文，AI需要详细数据才能进行后续分析
-                            current_messages.append({'role': 'assistant', 'content': json.dumps(ai_data, ensure_ascii=False)})
-                            current_messages.append({'role': 'user', 'content': json.dumps(action_result, ensure_ascii=False)})
-                        else:
-                            task_result['status'] = 'failed'
-                            task_result['result'] = action_result.get('message', '查询失败')
-                            current_messages.append({'role': 'assistant', 'content': ai_content})
-                            current_messages.append({'role': 'user', 'content': action_result.get('message', '查询失败')})
-                    else:
-                        task_result['status'] = 'failed'
-                        task_result['result'] = '未找到有效的查询操作'
-                        current_messages.append({'role': 'assistant', 'content': ai_content})
-                elif task_type == 'modify':
-                    # 修改类任务（支持多轮修改）
-                    modify_msg = '执行任务：' + task_name + '。你必须返回JSON格式的修改操作，我会立即执行。\n\n严格要求：\n1. 绝对不能用自然语言描述你要做什么，必须直接返回JSON\n2. 每次只返回一个操作\n3. 必须执行完所有修改后，才能用chat操作返回总结\n4. 如果你直接返回chat而不执行任何修改，任务会失败\n\n格式：{"action": "update_word", "data": {"english_word": "xxx", "category_name": "xxx"}}'
-                    current_messages.append({'role': 'user', 'content': modify_msg})
-                    
-                    modify_count = 0
-                    modified_count = 0
-                    max_rounds = 50  # 最多50轮
-                    
-                    while modify_count < max_rounds:
-                        modify_count += 1
-                        
-                        # 发送请求
                         payload = {'model': model_name, 'messages': current_messages, 'temperature': 0.7}
                         response = requests.post(api_url, headers=headers, json=payload, timeout=60)
                         response.raise_for_status()
                         ai_content = response.json()['choices'][0]['message']['content'].strip()
                         
-                        # 解析JSON
+                        # 解析查询操作
                         ai_data = None
                         try:
                             ai_data = json.loads(ai_content.strip())
@@ -2231,152 +2271,246 @@ def admin_ai_chat():
                                 except:
                                     pass
                         
-                        if ai_data:
-                            action = ai_data.get('action', '')
+                        if ai_data and ai_data.get('action', '').startswith('query_'):
+                            action = ai_data.get('action')
                             action_data = ai_data.get('data', {})
+                            action_result = execute_ai_action(action, action_data)
                             
-                            if action in ['add_word', 'update_word', 'delete_word', 'add_category', 'update_category', 'delete_category', 'merge_categories', 'batch_add_words', 'batch_delete_words']:
-                                # 执行修改操作
-                                action_result = execute_ai_action(action, action_data)
-                                if action_result['success']:
-                                    modified_count += 1
-                                
-                                # 只把操作结果加入上下文，不加入完整的AI回复（减少冗余）
-                                current_messages.append({'role': 'assistant', 'content': json.dumps(ai_data, ensure_ascii=False)})
-                                current_messages.append({'role': 'user', 'content': action_result['message']})
-                                continue
-                            
-                            elif action == 'chat':
-                                # 完成了，记录总结
-                                task_result['result'] = action_data.get('message', ai_content)
-                                current_messages.append({'role': 'assistant', 'content': ai_content})
-                                break
-                            
-                            elif action.startswith('query_'):
-                                # 查询操作，也执行
-                                action_result = execute_ai_action(action, action_data)
+                            if action_result['success']:
+                                task_result['status'] = 'success'
+                                task_result['result'] = action_result.get('message', '查询成功')
                                 current_messages.append({'role': 'assistant', 'content': json.dumps(ai_data, ensure_ascii=False)})
                                 current_messages.append({'role': 'user', 'content': json.dumps(action_result, ensure_ascii=False)})
-                                continue
-                            
                             else:
-                                # 未知操作，提示AI重新返回
+                                task_result['status'] = 'failed'
+                                task_result['result'] = action_result.get('message', '查询失败')
                                 current_messages.append({'role': 'assistant', 'content': ai_content})
-                                current_messages.append({'role': 'user', 'content': '请返回正确的JSON操作格式，只返回JSON，不要其他文字。'})
-                                continue
+                                current_messages.append({'role': 'user', 'content': action_result.get('message', '查询失败')})
                         else:
-                            # 解析失败，提示AI重新返回
+                            task_result['status'] = 'failed'
+                            task_result['result'] = '未找到有效的查询操作'
                             current_messages.append({'role': 'assistant', 'content': ai_content})
-                            current_messages.append({'role': 'user', 'content': '解析失败，请返回纯JSON格式，不要包含解释文字。格式：{"action": "操作类型", "data": {参数}}'})
-                            continue
                     
-                    task_result['status'] = 'success'
-                    if modified_count > 0:
-                        task_result['result'] = f'已完成 {modified_count} 项修改操作'
+                    elif task_type == 'modify':
+                        # 修改类任务（支持多轮修改）
+                        modify_msg = '执行任务：' + task_name + '。你必须返回JSON格式的修改操作，我会立即执行。\n\n严格要求：\n1. 绝对不能用自然语言描述你要做什么，必须直接返回JSON\n2. 每次只返回一个操作\n3. 必须执行完所有修改后，才能用chat操作返回总结\n4. 如果你直接返回chat而不执行任何修改，任务会失败\n\n格式：{"action": "update_word", "data": {"english_word": "xxx", "category_name": "xxx"}}'
+                        current_messages.append({'role': 'user', 'content': modify_msg})
+                        
+                        modify_count = 0
+                        modified_count = 0
+                        max_rounds = 50
+                        
+                        while modify_count < max_rounds:
+                            modify_count += 1
+                            
+                            payload = {'model': model_name, 'messages': current_messages, 'temperature': 0.7}
+                            response = requests.post(api_url, headers=headers, json=payload, timeout=60)
+                            response.raise_for_status()
+                            ai_content = response.json()['choices'][0]['message']['content'].strip()
+                            
+                            # 解析JSON
+                            ai_data = None
+                            try:
+                                ai_data = json.loads(ai_content.strip())
+                            except:
+                                try:
+                                    import re
+                                    json_match = re.search(r'```(?:json)?\s*\n(.*?)\n```', ai_content, re.DOTALL)
+                                    if json_match:
+                                        ai_data = json.loads(json_match.group(1).strip())
+                                except:
+                                    try:
+                                        json_start = ai_content.find('{')
+                                        if json_start >= 0:
+                                            depth = 0
+                                            json_end = -1
+                                            for i in range(json_start, len(ai_content)):
+                                                if ai_content[i] == '{':
+                                                    depth += 1
+                                                elif ai_content[i] == '}':
+                                                    depth -= 1
+                                                    if depth == 0:
+                                                        json_end = i + 1
+                                                        break
+                                            if json_end > json_start:
+                                                ai_data = json.loads(ai_content[json_start:json_end])
+                                    except:
+                                        pass
+                            
+                            if ai_data:
+                                action = ai_data.get('action', '')
+                                action_data = ai_data.get('data', {})
+                                
+                                if action in ['add_word', 'update_word', 'delete_word', 'add_category', 'update_category', 'delete_category', 'merge_categories', 'batch_add_words', 'batch_delete_words']:
+                                    action_result = execute_ai_action(action, action_data)
+                                    if action_result['success']:
+                                        modified_count += 1
+                                    
+                                    # 发送操作进度
+                                    yield f'event: task_progress\ndata: {json.dumps({"action": action, "result": action_result.get("message", "")}, ensure_ascii=False)}\n\n'
+                                    
+                                    current_messages.append({'role': 'assistant', 'content': json.dumps(ai_data, ensure_ascii=False)})
+                                    current_messages.append({'role': 'user', 'content': action_result['message']})
+                                    continue
+                                
+                                elif action == 'chat':
+                                    task_result['result'] = action_data.get('message', ai_content)
+                                    current_messages.append({'role': 'assistant', 'content': ai_content})
+                                    break
+                                
+                                elif action.startswith('query_'):
+                                    action_result = execute_ai_action(action, action_data)
+                                    current_messages.append({'role': 'assistant', 'content': json.dumps(ai_data, ensure_ascii=False)})
+                                    current_messages.append({'role': 'user', 'content': json.dumps(action_result, ensure_ascii=False)})
+                                    continue
+                                
+                                else:
+                                    current_messages.append({'role': 'assistant', 'content': ai_content})
+                                    current_messages.append({'role': 'user', 'content': '请返回正确的JSON操作格式，只返回JSON，不要其他文字。'})
+                                    continue
+                            else:
+                                current_messages.append({'role': 'assistant', 'content': ai_content})
+                                current_messages.append({'role': 'user', 'content': '解析失败，请返回纯JSON格式，不要包含解释文字。'})
+                                continue
+                        
+                        task_result['status'] = 'success'
+                        if modified_count > 0:
+                            task_result['result'] = f'已完成 {modified_count} 项修改操作'
+                        else:
+                            task_result['result'] = '任务完成'
+                    
+                    elif task_type == 'analyze':
+                        # 分析类任务
+                        analyze_msg = f'执行任务：{task_name}。请根据已有信息进行分析，给出分析结论。'
+                        current_messages.append({'role': 'user', 'content': analyze_msg})
+                        
+                        payload = {'model': model_name, 'messages': current_messages, 'temperature': 0.7}
+                        response = requests.post(api_url, headers=headers, json=payload, timeout=60)
+                        response.raise_for_status()
+                        ai_content = response.json()['choices'][0]['message']['content'].strip()
+                        
+                        task_result['status'] = 'success'
+                        task_result['result'] = ai_content[:500]
+                        current_messages.append({'role': 'assistant', 'content': ai_content})
+                    
                     else:
-                        task_result['result'] = '任务完成'
-                elif task_type == 'analyze':
-                    # 分析类任务
-                    analyze_msg = f'执行任务：{task_name}。请根据已有信息进行分析，给出分析结论。'
-                    current_messages.append({'role': 'user', 'content': analyze_msg})
-                    
-                    payload = {'model': model_name, 'messages': current_messages, 'temperature': 0.7}
-                    response = requests.post(api_url, headers=headers, json=payload, timeout=60)
-                    response.raise_for_status()
-                    ai_content = response.json()['choices'][0]['message']['content'].strip()
-                    
-                    task_result['status'] = 'success'
-                    task_result['result'] = ai_content[:500]
-                    current_messages.append({'role': 'assistant', 'content': ai_content})
+                        current_messages.append({'role': 'user', 'content': f'执行任务：{task_name}'})
+                        payload = {'model': model_name, 'messages': current_messages, 'temperature': 0.7}
+                        response = requests.post(api_url, headers=headers, json=payload, timeout=60)
+                        response.raise_for_status()
+                        ai_content = response.json()['choices'][0]['message']['content'].strip()
+                        
+                        task_result['status'] = 'success'
+                        task_result['result'] = ai_content[:300]
+                        current_messages.append({'role': 'assistant', 'content': ai_content})
                 
-                else:
-                    current_messages.append({'role': 'user', 'content': f'执行任务：{task_name}'})
-                    payload = {'model': model_name, 'messages': current_messages, 'temperature': 0.7}
+                except Exception as e:
+                    task_result['status'] = 'failed'
+                    task_result['result'] = f'执行失败：{str(e)}'
+                
+                task_results.append(task_result)
+                
+                # 发送任务完成
+                yield f'event: task_end\ndata: {json.dumps(task_result, ensure_ascii=False)}\n\n'
+            
+            # ========== 阶段3：生成总结（流式） ==========
+            yield f'event: status\ndata: 正在生成总结...\n\n'
+            yield f'event: summary_start\ndata: \n\n'
+            
+            try:
+                current_messages.append({'role': 'user', 'content': '所有任务已执行完毕，请用自然语言生成一个总结，告诉用户完成了什么。'})
+                payload = {'model': model_name, 'messages': current_messages, 'temperature': 0.7, 'stream': True}
+                
+                final_summary = ''
+                try:
+                    response = requests.post(api_url, headers=headers, json=payload, timeout=60, stream=True)
+                    response.raise_for_status()
+                    
+                    for line in response.iter_lines():
+                        if line:
+                            line = line.decode('utf-8')
+                            if line.startswith('data: '):
+                                data = line[6:]
+                                if data == '[DONE]':
+                                    break
+                                try:
+                                    json_data = json.loads(data)
+                                    delta = json_data['choices'][0].get('delta', {})
+                                    content_delta = delta.get('content', '')
+                                    if content_delta:
+                                        final_summary += content_delta
+                                        yield f'event: summary_token\ndata: {json.dumps({"text": content_delta}, ensure_ascii=False)}\n\n'
+                                except:
+                                    pass
+                except:
+                    # 流式失败，降级为普通请求
+                    payload['stream'] = False
                     response = requests.post(api_url, headers=headers, json=payload, timeout=60)
                     response.raise_for_status()
-                    ai_content = response.json()['choices'][0]['message']['content'].strip()
-                    
-                    task_result['status'] = 'success'
-                    task_result['result'] = ai_content[:300]
-                    current_messages.append({'role': 'assistant', 'content': ai_content})
+                    final_summary = response.json()['choices'][0]['message']['content'].strip()
+                    yield f'event: summary_token\ndata: {json.dumps({"text": final_summary}, ensure_ascii=False)}\n\n'
+            except:
+                final_summary = '任务执行完成。'
+                yield f'event: summary_token\ndata: {json.dumps({"text": final_summary}, ensure_ascii=False)}\n\n'
             
-            except Exception as e:
-                task_result['status'] = 'failed'
-                task_result['result'] = f'执行失败：{str(e)}'
+            yield f'event: summary_end\ndata: \n\n'
             
-            task_results.append(task_result)
-        
-        # ========== 阶段3：生成总结 ==========
-        try:
-            current_messages.append({'role': 'user', 'content': '所有任务已执行完毕，请用自然语言生成一个总结，告诉用户完成了什么。'})
-            payload = {'model': model_name, 'messages': current_messages, 'temperature': 0.7}
-            response = requests.post(api_url, headers=headers, json=payload, timeout=60)
-            response.raise_for_status()
-            final_summary = response.json()['choices'][0]['message']['content'].strip()
-        except:
-            final_summary = '任务执行完成。'
-        
-        # ========== 构建最终回复 ==========
-        reply_parts = []
-        
-        # 任务清单
-        reply_parts.append('📋 **任务清单**')
-        for task in task_list:
-            status_icon = '⏳'
-            for tr in task_results:
-                if tr['id'] == task['id']:
-                    if tr['status'] == 'success':
-                        status_icon = '✅'
-                    elif tr['status'] == 'failed':
-                        status_icon = '❌'
-                    break
-            desc = task.get('description', '')
-            if desc:
-                reply_parts.append(f'{status_icon} {task["id"]}. {task["name"]} - {desc}')
-            else:
-                reply_parts.append(f'{status_icon} {task["id"]}. {task["name"]}')
-        
-        reply_parts.append('')
-        
-        # 执行详情
-        reply_parts.append('📝 **执行详情**')
-        for tr in task_results:
-            icon = '✅' if tr['status'] == 'success' else ('❌' if tr['status'] == 'failed' else '⏳')
-            reply_parts.append(f'{icon} **{tr["name"]}**')
-            if tr['result']:
-                result_text = tr['result']
-                if len(result_text) > 300:
-                    result_text = result_text[:300] + '...'
-                reply_parts.append(f'   {result_text}')
+            # ========== 构建最终回复并保存 ==========
+            reply_parts = []
+            reply_parts.append('📋 **任务清单**')
+            for task in task_list:
+                status_icon = '⏳'
+                for tr in task_results:
+                    if tr['id'] == task['id']:
+                        if tr['status'] == 'success':
+                            status_icon = '✅'
+                        elif tr['status'] == 'failed':
+                            status_icon = '❌'
+                        break
+                desc = task.get('description', '')
+                if desc:
+                    reply_parts.append(f'{status_icon} {task["id"]}. {task["name"]} - {desc}')
+                else:
+                    reply_parts.append(f'{status_icon} {task["id"]}. {task["name"]}')
+            
             reply_parts.append('')
+            reply_parts.append('📝 **执行详情**')
+            for tr in task_results:
+                icon = '✅' if tr['status'] == 'success' else ('❌' if tr['status'] == 'failed' else '⏳')
+                reply_parts.append(f'{icon} **{tr["name"]}**')
+                if tr['result']:
+                    result_text = tr['result']
+                    if len(result_text) > 300:
+                        result_text = result_text[:300] + '...'
+                    reply_parts.append(f'   {result_text}')
+                reply_parts.append('')
+            
+            reply_parts.append('📊 **总结**')
+            reply_parts.append(final_summary)
+            
+            reply_message = chr(10).join(reply_parts)
+            full_reply = reply_message
+            
+            # 保存AI回复
+            conn = get_db()
+            conn.execute('INSERT INTO ai_chat_history (role, content) VALUES (?, ?)', ('assistant', reply_message))
+            conn.commit()
+            conn.close()
+            
+            add_log('ai_chat', f'用户消息：{user_message[:100]}')
+            
+            # 发送完成事件
+            yield f'event: done\ndata: {json.dumps({"success": True, "reply": reply_message, "task_list": task_list, "task_results": task_results, "summary": final_summary}, ensure_ascii=False)}\n\n'
         
-        # 总结
-        reply_parts.append('📊 **总结**')
-        reply_parts.append(final_summary)
-        
-        reply_message = chr(10).join(reply_parts)
-        
-    except requests.exceptions.RequestException as e:
-        reply_message = f'❌ API调用失败：{str(e)}'
-    except Exception as e:
-        reply_message = f'❌ 处理请求时出错：{str(e)}'
+        except requests.exceptions.RequestException as e:
+            error_msg = f'❌ API调用失败：{str(e)}'
+            yield f'event: error\ndata: {json.dumps({"message": error_msg}, ensure_ascii=False)}\n\n'
+        except Exception as e:
+            error_msg = f'❌ 处理请求时出错：{str(e)}'
+            yield f'event: error\ndata: {json.dumps({"message": error_msg}, ensure_ascii=False)}\n\n'
     
-    # 保存AI回复
-    conn = get_db()
-    conn.execute('INSERT INTO ai_chat_history (role, content) VALUES (?, ?)', ('assistant', reply_message))
-    conn.commit()
-    conn.close()
-    
-    add_log('ai_chat', f'用户消息：{user_message[:100]}')
-    
-    return jsonify({
-        'success': True,
-        'message': reply_message,
-        'reply': reply_message,
-        'task_list': task_list,
-        'task_results': task_results,
-        'summary': final_summary
-    })
+    # 返回SSE响应
+    return Response(generate(), mimetype='text/event-stream')
 
 
 if __name__ == '__main__':

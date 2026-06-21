@@ -5,7 +5,7 @@ export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
 
 echo "========================================"
-echo "  网络安全词汇动态网站 - 启动脚本"
+echo "  术语通 TermHub - 启动脚本"
 echo "========================================"
 echo ""
 

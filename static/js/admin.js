@@ -1624,6 +1624,222 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
+        // 渲染AI思考过程回复
+        function renderAIResponse(result) {
+            const chatMessages = document.getElementById('chatMessages');
+            if (!chatMessages) return;
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'chat-message ai-message';
+            
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            avatar.textContent = '🤖';
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'ai-thinking-message';
+            
+            // 如果没有任务列表，用普通方式显示
+            if (!result.task_list || result.task_list.length === 0) {
+                contentDiv.className = 'message-content';
+                const lines = (result.reply || result.message || '').split('\n');
+                lines.forEach(line => {
+                    if (line.trim()) {
+                        const p = document.createElement('p');
+                        p.textContent = line;
+                        contentDiv.appendChild(p);
+                    }
+                });
+                messageDiv.appendChild(avatar);
+                messageDiv.appendChild(contentDiv);
+                chatMessages.appendChild(messageDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                return;
+            }
+            
+            // ========== 阶段1：任务规划 ==========
+            const planningPhase = document.createElement('div');
+            planningPhase.className = 'ai-phase planning';
+            
+            const planningHeader = document.createElement('div');
+            planningHeader.className = 'ai-phase-header';
+            planningHeader.innerHTML = `
+                <div class="ai-phase-icon">🧠</div>
+                <span>任务规划</span>
+            `;
+            planningPhase.appendChild(planningHeader);
+            
+            const taskList = document.createElement('ul');
+            taskList.className = 'ai-task-list';
+            
+            result.task_list.forEach((task, index) => {
+                const taskItem = document.createElement('li');
+                taskItem.className = 'ai-task-item';
+                taskItem.style.animationDelay = (index * 0.15) + 's';
+                
+                const taskNumber = document.createElement('div');
+                taskNumber.className = 'ai-task-number';
+                taskNumber.textContent = index + 1;
+                
+                const taskContent = document.createElement('div');
+                taskContent.className = 'ai-task-content';
+                taskContent.textContent = task.description || task.name || task;
+                
+                const taskStatus = document.createElement('div');
+                taskStatus.className = 'ai-task-status pending';
+                taskStatus.textContent = '待执行';
+                taskStatus.id = 'task-status-' + index;
+                
+                taskItem.appendChild(taskNumber);
+                taskItem.appendChild(taskContent);
+                taskItem.appendChild(taskStatus);
+                taskList.appendChild(taskItem);
+            });
+            
+            planningPhase.appendChild(taskList);
+            contentDiv.appendChild(planningPhase);
+            
+            // ========== 阶段2：执行过程 ==========
+            const executingPhase = document.createElement('div');
+            executingPhase.className = 'ai-phase executing';
+            executingPhase.style.display = 'none';
+            executingPhase.id = 'executing-phase';
+            
+            const executingHeader = document.createElement('div');
+            executingHeader.className = 'ai-phase-header';
+            executingHeader.innerHTML = `
+                <div class="ai-phase-icon">⚡</div>
+                <span>执行过程</span>
+            `;
+            executingPhase.appendChild(executingHeader);
+            
+            const execList = document.createElement('ul');
+            execList.className = 'ai-task-list';
+            execList.id = 'exec-task-list';
+            executingPhase.appendChild(execList);
+            
+            contentDiv.appendChild(executingPhase);
+            
+            // ========== 阶段3：总结 ==========
+            const summaryPhase = document.createElement('div');
+            summaryPhase.className = 'ai-phase summary';
+            summaryPhase.style.display = 'none';
+            summaryPhase.id = 'summary-phase';
+            
+            const summaryHeader = document.createElement('div');
+            summaryHeader.className = 'ai-phase-header';
+            summaryHeader.innerHTML = `
+                <div class="ai-phase-icon">✅</div>
+                <span>完成总结</span>
+            `;
+            summaryPhase.appendChild(summaryHeader);
+            
+            const summaryContent = document.createElement('div');
+            summaryContent.className = 'ai-summary-content';
+            summaryContent.id = 'summary-content';
+            summaryPhase.appendChild(summaryContent);
+            
+            contentDiv.appendChild(summaryPhase);
+            
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(contentDiv);
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // 动画：逐个显示执行结果
+            setTimeout(() => {
+                executingPhase.style.display = 'block';
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                const execResults = result.task_results || [];
+                
+                execResults.forEach((res, index) => {
+                    setTimeout(() => {
+                        // 更新规划阶段的状态
+                        const statusEl = document.getElementById('task-status-' + index);
+                        if (statusEl) {
+                            statusEl.className = 'ai-task-status ' + (res.success ? 'success' : 'failed');
+                            statusEl.textContent = res.success ? '成功' : '失败';
+                        }
+                        
+                        // 添加执行结果
+                        const execItem = document.createElement('li');
+                        execItem.className = 'ai-task-item';
+                        
+                        const taskNumber = document.createElement('div');
+                        taskNumber.className = 'ai-task-number';
+                        taskNumber.textContent = index + 1;
+                        
+                        const taskContent = document.createElement('div');
+                        taskContent.className = 'ai-task-content';
+                        
+                        const taskName = document.createElement('div');
+                        taskName.style.fontWeight = '500';
+                        taskName.textContent = res.task || res.operation || ('任务 ' + (index + 1));
+                        taskContent.appendChild(taskName);
+                        
+                        if (res.message || res.result) {
+                            const taskResult = document.createElement('div');
+                            taskResult.className = 'ai-task-result';
+                            taskResult.textContent = res.message || res.result || JSON.stringify(res);
+                            taskContent.appendChild(taskResult);
+                        }
+                        
+                        const taskStatus = document.createElement('div');
+                        taskStatus.className = 'ai-task-status ' + (res.success ? 'success' : 'failed');
+                        taskStatus.textContent = res.success ? '成功' : '失败';
+                        
+                        execItem.appendChild(taskNumber);
+                        execItem.appendChild(taskContent);
+                        execItem.appendChild(taskStatus);
+                        execList.appendChild(execItem);
+                        
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                        
+                        // 最后一个执行完后显示总结
+                        if (index === execResults.length - 1) {
+                            setTimeout(() => {
+                                summaryPhase.style.display = 'block';
+                                
+                                const summaryText = result.summary || result.reply || '任务完成';
+                                const lines = summaryText.split('\n');
+                                lines.forEach(line => {
+                                    if (line.trim()) {
+                                        const p = document.createElement('p');
+                                        p.textContent = line;
+                                        summaryContent.appendChild(p);
+                                    }
+                                });
+                                
+                                chatMessages.scrollTop = chatMessages.scrollHeight;
+                                
+                                // 刷新数据
+                                loadCategories();
+                                updateStats();
+                            }, 500);
+                        }
+                    }, index * 400);
+                });
+                
+                // 如果没有执行结果，直接显示总结
+                if (execResults.length === 0) {
+                    setTimeout(() => {
+                        summaryPhase.style.display = 'block';
+                        const summaryText = result.summary || result.reply || '任务完成';
+                        const lines = summaryText.split('\n');
+                        lines.forEach(line => {
+                            if (line.trim()) {
+                                const p = document.createElement('p');
+                                p.textContent = line;
+                                summaryContent.appendChild(p);
+                            }
+                        });
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    }, 800);
+                }
+            }, result.task_list.length * 150 + 300);
+        }
+
         // 显示打字指示器
         function showTypingIndicator() {
             const chatMessages = document.getElementById('chatMessages');
@@ -1677,39 +1893,309 @@
             // 清空输入框
             input.value = '';
             
-            // 显示打字指示器
-            showTypingIndicator();
+            // 创建AI消息元素（流式输出）
+            const messageEl = createStreamMessage();
             
-            // 发送请求
-            fetch('/api/admin/ai-chat', {
+            // 发送流式请求
+            fetch('/api/admin/ai-chat-stream', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: message })
             })
-            .then(res => res.json())
-            .then(result => {
-                // 隐藏打字指示器
-                hideTypingIndicator();
-                
-                if (!result.success) {
-                    addChatMessage('assistant', '❌ ' + (result.message || '发送失败'));
-                    return;
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('请求失败');
                 }
                 
-                // 添加AI回复
-                addChatMessage('assistant', result.reply);
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
                 
-                // 如果有操作结果，刷新相关数据
-                if (result.action_result && result.action_result.success) {
-                    // 操作成功，刷新分类和单词数据
-                    loadCategories();
-                    updateStats();
+                // 流式数据状态
+                const streamState = {
+                    planText: '',
+                    summaryText: '',
+                    tasks: [],
+                    taskResults: [],
+                    currentTask: null,
+                    phase: 'planning' // planning, executing, summarizing
+                };
+                
+                function processEvent(eventType, data) {
+                    updateStreamMessage(messageEl, eventType, data, streamState);
                 }
+                
+                function read() {
+                    reader.read().then(({ done, value }) => {
+                        if (done) {
+                            return;
+                        }
+                        
+                        buffer += decoder.decode(value, { stream: true });
+                        
+                        // 解析SSE事件
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop(); // 保留不完整的行
+                        
+                        let currentEvent = 'message';
+                        let eventData = '';
+                        
+                        for (const line of lines) {
+                            if (line.startsWith('event: ')) {
+                                currentEvent = line.slice(7);
+                            } else if (line.startsWith('data: ')) {
+                                eventData = line.slice(6);
+                            } else if (line === '') {
+                                // 事件结束
+                                if (eventData) {
+                                    try {
+                                        const parsed = JSON.parse(eventData);
+                                        processEvent(currentEvent, parsed);
+                                    } catch (e) {
+                                        processEvent(currentEvent, { text: eventData });
+                                    }
+                                }
+                                currentEvent = 'message';
+                                eventData = '';
+                            }
+                        }
+                        
+                        read();
+                    }).catch(err => {
+                        console.error('流式读取错误:', err);
+                    });
+                }
+                
+                read();
             })
             .catch(err => {
-                hideTypingIndicator();
-                addChatMessage('assistant', '❌ 请求失败：' + err.message);
+                messageEl.querySelector('.message-content').innerHTML = '❌ 请求失败：' + err.message;
             });
+        }
+        
+        // 创建流式消息元素
+        function createStreamMessage() {
+            const chatMessages = document.getElementById('chatMessages');
+            if (!chatMessages) return null;
+            
+            const messageEl = document.createElement('div');
+            messageEl.className = 'chat-message assistant-message';
+            messageEl.innerHTML = `
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">
+                    <div class="thinking-indicator">
+                        <span class="thinking-icon">🧠</span>
+                        <div>
+                            <div class="thinking-text">AI 正在思考
+                                <span class="thinking-dots">
+                                    <span></span><span></span><span></span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            chatMessages.appendChild(messageEl);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            return messageEl;
+        }
+        
+        // 更新流式消息
+        function updateStreamMessage(messageEl, eventType, data, state) {
+            const contentEl = messageEl.querySelector('.message-content');
+            if (!contentEl) return;
+            
+            switch (eventType) {
+                case 'status':
+                    // 更新状态文字
+                    const statusEl = contentEl.querySelector('.stream-status');
+                    if (statusEl) {
+                        statusEl.textContent = '⏳ ' + (data.text || data.message || '处理中...');
+                    }
+                    break;
+                    
+                case 'plan_start':
+                    state.phase = 'planning';
+                    contentEl.innerHTML = `
+                        <div class="thinking-indicator">
+                            <span class="thinking-icon">📋</span>
+                            <div>
+                                <div class="thinking-text">正在规划任务
+                                    <span class="thinking-dots">
+                                        <span></span><span></span><span></span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stream-section">
+                            <div class="stream-plan-content"></div>
+                        </div>
+                    `;
+                    break;
+                    
+                case 'plan_token':
+                    state.planText += data.text || '';
+                    const planContent = contentEl.querySelector('.stream-plan-content');
+                    if (planContent) {
+                        planContent.textContent = state.planText;
+                    }
+                    const chatMessages = document.getElementById('chatMessages');
+                    if (chatMessages) {
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    }
+                    break;
+                    
+                case 'plan_end':
+                    // 规划完成，准备显示任务列表
+                    break;
+                    
+                case 'task_list':
+                    state.tasks = data || [];
+                    state.phase = 'executing';
+                    
+                    // 渲染任务列表
+                    let tasksHtml = '<div class="stream-section-title">📋 任务清单</div>';
+                    tasksHtml += '<div class="stream-tasks">';
+                    for (const task of state.tasks) {
+                        const typeIcon = task.type === 'query' ? '🔍' : (task.type === 'modify' ? '✏️' : '📊');
+                        tasksHtml += `
+                            <div class="stream-task task-pending" data-task-id="${task.id}">
+                                <span class="task-icon">⏳</span>
+                                <span class="task-name">${task.name}</span>
+                                <span class="task-type">${typeIcon} ${task.type}</span>
+                            </div>
+                        `;
+                    }
+                    tasksHtml += '</div>';
+                    tasksHtml += '<div class="stream-execution"></div>';
+                    
+                    contentEl.innerHTML = `<div class="stream-section">${tasksHtml}</div>`;
+                    break;
+                    
+                case 'task_start':
+                    state.currentTask = data;
+                    
+                    // 更新任务状态为进行中
+                    const taskEl = contentEl.querySelector(`[data-task-id="${data.id}"]`);
+                    if (taskEl) {
+                        taskEl.classList.remove('task-pending');
+                        taskEl.classList.add('task-running');
+                        taskEl.querySelector('.task-icon').textContent = '⚙️';
+                    }
+                    
+                    // 在执行区域添加任务开始，带等待动画
+                    const executionEl = contentEl.querySelector('.stream-execution');
+                    if (executionEl) {
+                        executionEl.innerHTML += `
+                            <div class="stream-task-detail task-detail-running" data-detail-id="${data.id}">
+                                <div class="task-detail-title">⚙️ ${data.name}</div>
+                                <div class="task-detail-result">
+                                    <div class="stream-loading">
+                                        <span>执行中</span>
+                                        <span class="stream-loading-dots">
+                                            <span></span><span></span><span></span>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    const chatMsgs = document.getElementById('chatMessages');
+                    if (chatMsgs) {
+                        chatMsgs.scrollTop = chatMsgs.scrollHeight;
+                    }
+                    break;
+                    
+                case 'task_progress':
+                    // 任务进度更新
+                    const detailEl = contentEl.querySelector(`[data-detail-id="${state.currentTask?.id}"] .task-detail-result`);
+                    if (detailEl) {
+                        detailEl.innerHTML += `<br>✅ ${data.result || data.action || ''}`;
+                    }
+                    break;
+                    
+                case 'task_end':
+                    state.taskResults.push(data);
+                    
+                    // 更新任务状态
+                    const finishedTaskEl = contentEl.querySelector(`[data-task-id="${data.id}"]`);
+                    if (finishedTaskEl) {
+                        finishedTaskEl.classList.remove('task-running');
+                        finishedTaskEl.classList.add(data.status === 'success' ? 'task-success' : 'task-failed');
+                        finishedTaskEl.querySelector('.task-icon').textContent = data.status === 'success' ? '✅' : '❌';
+                    }
+                    
+                    // 更新任务详情
+                    const finishedDetailEl = contentEl.querySelector(`[data-detail-id="${data.id}"]`);
+                    if (finishedDetailEl) {
+                        finishedDetailEl.classList.remove('task-detail-running');
+                        finishedDetailEl.classList.add(data.status === 'success' ? 'task-detail-success' : 'task-detail-failed');
+                        const resultEl = finishedDetailEl.querySelector('.task-detail-result');
+                        if (resultEl && data.result) {
+                            resultEl.innerHTML = data.result;
+                        }
+                    }
+                    
+                    const chatMsgs2 = document.getElementById('chatMessages');
+                    if (chatMsgs2) {
+                        chatMsgs2.scrollTop = chatMsgs2.scrollHeight;
+                    }
+                    break;
+                    
+                case 'summary_start':
+                    state.phase = 'summarizing';
+                    
+                    // 添加总结区域，带等待动画
+                    const execEl = contentEl.querySelector('.stream-execution');
+                    if (execEl) {
+                        execEl.innerHTML += `
+                            <div class="stream-section">
+                                <div class="thinking-indicator">
+                                    <span class="thinking-icon">📝</span>
+                                    <div>
+                                        <div class="thinking-text">正在生成总结
+                                            <span class="thinking-dots">
+                                                <span></span><span></span><span></span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="stream-summary-content"></div>
+                            </div>
+                        `;
+                    }
+                    break;
+                    
+                case 'summary_token':
+                    state.summaryText += data.text || '';
+                    const summaryContent = contentEl.querySelector('.stream-summary-content');
+                    if (summaryContent) {
+                        summaryContent.textContent = state.summaryText;
+                    }
+                    const chatMsgs3 = document.getElementById('chatMessages');
+                    if (chatMsgs3) {
+                        chatMsgs3.scrollTop = chatMsgs3.scrollHeight;
+                    }
+                    break;
+                    
+                case 'summary_end':
+                    // 总结完成
+                    break;
+                    
+                case 'error':
+                    contentEl.innerHTML = '❌ ' + (data.message || '出错了');
+                    break;
+                    
+                case 'done':
+                    // 全部完成，重新加载聊天历史（和刷新页面效果完全一样）
+                    setTimeout(() => {
+                        loadAIChatHistory();
+                    }, 300);
+                    break;
+            }
         }
 
         // 清空聊天历史
